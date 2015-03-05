@@ -16,7 +16,7 @@ public class HTMLConverter {
 	PrintStream stdout = System.out;
 	public static void main(String[] args) throws Exception {
 		String inputPath = "/home/david/Projects/SearchEngine/wikiDataset";
-		String outputPath = "../wikiText";
+		String outputPath = "/home/david/Projects/SearchEngine/wikiText";
 		HTMLConverter converter = new HTMLConverter(outputPath);
 		converter.addHTMLFiles(new File(inputPath));
 		//converter.convert();

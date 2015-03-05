@@ -42,14 +42,22 @@ public class LabelGenerator {
 
 	// docMap stores for key terms score propagation
 	private Map<Integer, Tuple<Integer, Float>> docMap;
-	private final static String indexLocation = "wikiIndex";
+	//private final static String indexLocation = "wikiIndex";
 	
 	public static void main(String[] args) {
 		List<String> keyTerms = new ArrayList<String>();
-		keyTerms.add("Arabica ");
-		keyTerms.add("movie ");
-		keyTerms.add("poet ");
-		LabelGenerator labelGenerator = new LabelGenerator(indexLocation);
+		//keyTerms.add("Arabica ");
+		//keyTerms.add("movie ");
+		//keyTerms.add("poet ");
+		TermExtractor termExtractor;
+		try {
+			termExtractor = new TermExtractor("clusterIndex");
+			keyTerms = termExtractor.extractTerms("ComputerHardware.txt", 4);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		System.out.println("The key terms that characterize the cluster is: " + keyTerms);
+		LabelGenerator labelGenerator = new LabelGenerator(TextFileIndexer.wikiIndex);
 		System.out.println(labelGenerator.generateLabel(keyTerms));
 	}
 	
@@ -69,11 +77,12 @@ public class LabelGenerator {
 	private List<Label> generateLabel(List<String> keyTerms) {
 		StringBuilder queryString = new StringBuilder();
 		for(String term : keyTerms)
-			queryString.append(term);
+			queryString.append(term + ' ');
 		query(queryString.toString());
 		integrateKeyTerms(keyTerms);
 		propagateScore();
 		return evaluateLabels();
+		//return evaluateKeywords();
 	}
 	/**
 	 * query wiki dataset with the queryString formed by concatena-
@@ -101,6 +110,7 @@ public class LabelGenerator {
 				Document document = indexSearcher.doc(docID);
 				// extract title and categories
 				String title = document.get("title");
+				title = title.toLowerCase().trim();
 				String[] categories = document.getValues("category");
 				// put title and categories into labelMap.
 				ArrayList<Integer> docList = labelMap.get(title);
@@ -113,6 +123,12 @@ public class LabelGenerator {
 				}
 				
 				for(String category : categories) {
+					category = category.toLowerCase();
+					if(category.contains("article"))
+						continue;
+					if(category.endsWith("stubs") || category.endsWith("stub"))
+						category = category.substring(0, category.indexOf("stub"));
+					category = category.trim();
 					docList = labelMap.get(category);
 					if(docList != null)
 						docList.add(docID);
@@ -185,12 +201,28 @@ public class LabelGenerator {
 			}
 		}
 	}
-	
+	private List<Label> evaluateKeywords() {
+		List<Label> labelCandidate = new ArrayList<Label>();	
+		for(String keyword : keywordMap.keySet()) {
+			float labelScore = keywordMap.get(keyword);
+			labelCandidate.add(new Label(keyword, labelScore));
+		}
+		labelCandidate.sort(new Comparator<Label>() {
+			public int compare(Label o1, Label o2) {
+				if(o1.score < o2.score) return 1;
+				else if(o1.score > o2.score) return -1;
+				else return 0;
+			}
+		});
+		return labelCandidate;
+	}
 	private List<Label> evaluateLabels() {
 		List<Label> labelCandidate = new ArrayList<Label>();
 		for(String label : labelMap.keySet()) {
 			float labelScore = 0;
 			String[] keywords = label.split(" ");
+			// filter label with length
+			if(keywords.length > 3) continue;
 			for(String keyword : keywords)
 				labelScore += keywordMap.get(keyword);
 			labelScore /= keywords.length;

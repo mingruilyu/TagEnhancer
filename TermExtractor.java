@@ -25,7 +25,7 @@ public class TermExtractor {
 	private long totalTermCount;
 	private static float LAMDA = 0.99f;
 	public static void main(String[] args) throws IOException, ParseException {
-		TermExtractor termExtractor = new TermExtractor("index");
+		TermExtractor termExtractor = new TermExtractor("clusterIndex");
 		List<String> keyTerms = termExtractor.extractTerms("Religion.txt", 10);
 		System.out.println("The key terms that characterize the cluster is: " + keyTerms);
 	}
@@ -92,6 +92,7 @@ public class TermExtractor {
 		BytesRef term = null;
 		while ((term = termEnum.next()) != null) {
 			String termText = term.utf8ToString();
+			if(termText.length() < 2) continue;
 			cluster.put(termText, termEnum.totalTermFreq());
 		}
 	}

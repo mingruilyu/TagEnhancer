@@ -49,19 +49,21 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
 
 public class TextFileIndexer {
-	private static String indexLocation = "wikiIndex";
-	
+	public static String wikiIndex = "/home/david/Projects/SearchEngine/wikiIndex";
+	private static String wikiTextInput = "/home/david/Projects/SearchEngine/wikiText";
+	private static String clusterIndex = "clusterIndex";
 	private static Analyzer analyzer;
 	private IndexWriter indexWriter;
 	public IndexReader indexReader;
 	
 	public static void main(String[] args) throws IOException, ParseException {
 		//BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
-		TextFileIndexer textFileIndexer = new TextFileIndexer(indexLocation);
-		//textFileIndexer.indexCollection("input");
-		//textFileIndexer.indexWikiDataset("wikiText");
-		//textFileIndexer.closeIndexer();
-		textFileIndexer.indexReader = DirectoryReader.open(FSDirectory.open(Paths.get(indexLocation)));
+		//TextFileIndexer textFileIndexer = new TextFileIndexer(wikiIndex);
+		TextFileIndexer textFileIndexer = new TextFileIndexer(clusterIndex);
+		textFileIndexer.indexCollection("input");
+		//textFileIndexer.indexWikiDataset(wikiTextInput);
+		textFileIndexer.closeIndexer();
+		//textFileIndexer.indexReader = DirectoryReader.open(FSDirectory.open(Paths.get(indexLocation)));
 		//System.out.println(textFileIndexer.indexReader.totalTermFreq(new Term("contents", "tom")));
 		//long count = textFileIndexer.indexReader.getSumTotalTermFreq("contents");
 		
@@ -166,6 +168,7 @@ public class TextFileIndexer {
 			for(File wikiFile : wikiRoot.listFiles())
 				iterativelyIndexWiki(wikiFile);
 		}
+		System.out.println(indexWriter.maxDoc() + " of documents indexed ");
 	}
 	
 	private void iterativelyIndexWiki(File wikiFile) {
@@ -202,7 +205,8 @@ public class TextFileIndexer {
 				// self defined unique ID
 				String id = String.valueOf(indexWriter.numDocs() + 1);
 				document.add(new StringField("id", id, Field.Store.YES));
-				document.add(new StringField("title", title, Field.Store.YES));
+				if(title != null)
+					document.add(new StringField("title", title, Field.Store.YES));
 				for(String category : categoryList)
 					document.add(new StringField("category", category, Field.Store.YES));
 				document.add(new TextField("contents", allText.toString(), Field.Store.YES));
