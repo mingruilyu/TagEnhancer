@@ -26,7 +26,7 @@ public class TermExtractor {
 	private static float LAMDA = 0.99f;
 	public static void main(String[] args) throws IOException, ParseException {
 		TermExtractor termExtractor = new TermExtractor("clusterIndex");
-		List<String> keyTerms = termExtractor.extractTerms("Religion.txt", 10);
+		List<TermJSD> keyTerms = termExtractor.extractTerms("Religion.txt", 10);
 		System.out.println("The key terms that characterize the cluster is: " + keyTerms);
 	}
 	
@@ -38,7 +38,7 @@ public class TermExtractor {
 		this.totalTermCount = this.indexReader.getSumTotalTermFreq("contents");
 	}
 	
-	public List<String> extractTerms(String clusterFile, int termNo) throws IOException {
+	public List<TermJSD> extractTerms(String clusterFile, int termNo) throws IOException {
 		// 1. create a Cluster
 		Cluster cluster = new Cluster(clusterFile);
 		// 2. Search document by id one by one and 
@@ -65,12 +65,7 @@ public class TermExtractor {
 						else return 0;
 					}
 				});
-		
-		// extract from termList the top termNo to return
-		List<String> keyTerms = new ArrayList<String>();
-		for(int i = 0; i < termNo; i ++)
-			keyTerms.add(termJSDList.get(i).getTerm());
-		return keyTerms;
+		return termJSDList;
 	} 
 	
 	public int retrieveDocument(String idIt) throws IOException {
@@ -87,7 +82,13 @@ public class TermExtractor {
 	}
 	
 	public void analyzeDocument(int docNo, Cluster cluster) throws IOException {
+		
 		Terms termVector = indexReader.getTermVector(docNo, "contents");
+		if(termVector == null){
+			System.out.println(docNo);
+			return;
+		}
+			
 		TermsEnum termEnum = termVector.iterator(null);
 		BytesRef term = null;
 		while ((term = termEnum.next()) != null) {
@@ -112,8 +113,8 @@ public class TermExtractor {
 		return DJS;
 	}
 	
-	private class TermJSD {
-		private String term;
+	static class TermJSD {
+		private final String term;
 		private float JSD;
 		
 		public TermJSD(String term, float JSD) {
@@ -126,6 +127,9 @@ public class TermExtractor {
 		}
 		public float getJSD() {
 			return this.JSD;
+		}
+		public void setJSD(float JSD) {
+			this.JSD = JSD;
 		}
 	}
 }

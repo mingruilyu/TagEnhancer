@@ -1,4 +1,10 @@
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.PrintStream;
+import java.io.PrintWriter;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -10,7 +16,6 @@ import java.util.function.ToDoubleFunction;
 import java.util.function.ToIntFunction;
 import java.util.function.ToLongFunction;
 
-
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -18,6 +23,8 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.queryparser.classic.ParseException;
 import org.apache.lucene.queryparser.classic.QueryParser;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -27,11 +34,17 @@ import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.store.FSDirectory;
 
 
+
+
+
 public class LabelGenerator {
-	private static final int MAX_DOC_NO = 100;
+	//private final static PrintStream  stdout = System.out;
+	private int MAX_DOC_NO = 30;
 	private Analyzer analyzer = new ClusterAnalyzer();
 	private IndexReader indexReader;
 	IndexSearcher indexSearcher;
+	
+	private final static PrintStream  stdout = System.out;
 	// keywordMap stores the pair of each keyword and
 	// its weight
 	private Map<String, Float> keywordMap;
@@ -44,23 +57,57 @@ public class LabelGenerator {
 	private Map<Integer, Tuple<Integer, Float>> docMap;
 	//private final static String indexLocation = "wikiIndex";
 	
+	public void setMAX_DOC_NO(int i){
+		MAX_DOC_NO = i;
+	}
+	
 	public static void main(String[] args) {
-		List<String> keyTerms = new ArrayList<String>();
+		List<TermExtractor.TermJSD> keyTerms = new ArrayList<TermExtractor.TermJSD>();
 		//keyTerms.add("Arabica ");
 		//keyTerms.add("movie ");
 		//keyTerms.add("poet ");
 		TermExtractor termExtractor;
 		try {
 			termExtractor = new TermExtractor("clusterIndex");
-			keyTerms = termExtractor.extractTerms("ComputerHardware.txt", 4);
+			keyTerms = termExtractor.extractTerms("rec.motorcycles.txt", 20);
+			printValues(keyTerms);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		System.out.println("The key terms that characterize the cluster is: " + keyTerms);
+		
+		System.setOut(stdout);
+		System.out.println("The key terms that characterize the cluster is: ");
+		for(TermExtractor.TermJSD keyTerm :keyTerms){
+			System.out.print(keyTerm.getTerm()+" ");
+			 //+ keyTerms);
+		}
+		System.out.println();
 		LabelGenerator labelGenerator = new LabelGenerator(TextFileIndexer.wikiIndex);
-		System.out.println(labelGenerator.generateLabel(keyTerms));
+		System.out.println(labelGenerator.generateLabel(keyTerms,20));
 	}
 	
+	private static void printValues(List<TermExtractor.TermJSD> keyTerms) {
+		File output = new File("../result.txt");
+		FileOutputStream fileOutputStream=null;
+		try {
+			fileOutputStream = new FileOutputStream(output);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		PrintStream printStream = new PrintStream(fileOutputStream);
+		System.setOut(printStream);
+
+		
+		for(TermExtractor.TermJSD term : keyTerms){
+			//System.setOut(printStream);
+			System.out.println(term.getJSD()+ "  ");
+		}
+		
+		// TODO Auto-generated method stub
+		
+	}
+
 	public LabelGenerator(String indexLocation) {
 		try {
 			indexReader = DirectoryReader.open(FSDirectory.open(Paths.get(indexLocation)));
@@ -74,15 +121,12 @@ public class LabelGenerator {
 		}
 	}
 	
-	private List<Label> generateLabel(List<String> keyTerms) {
-		StringBuilder queryString = new StringBuilder();
-		for(String term : keyTerms)
-			queryString.append(term + ' ');
-		query(queryString.toString());
-		integrateKeyTerms(keyTerms);
+	public List<Label> generateLabel(List<TermExtractor.TermJSD> keyTerms, int maxKeyTerm) {
+		query(keyTerms, maxKeyTerm);
+		integrateKeyTerms(keyTerms,maxKeyTerm);
 		propagateScore();
-		return evaluateLabels();
-		//return evaluateKeywords();
+		//return evaluateLabels();
+		return evaluateKeywords();
 	}
 	/**
 	 * query wiki dataset with the queryString formed by concatena-
@@ -98,9 +142,34 @@ public class LabelGenerator {
 	 * 		the labelMap.   
 	 * 
 	 */
-	private void query(String queryString) {
+	private void query(List<TermExtractor.TermJSD> keyTerms, int maxKeyTerm) {
 		try {
-			Query query = new QueryParser("contents", analyzer).parse(queryString);
+			float score = 0;
+			int keyTermCount = 0;
+			for(TermExtractor.TermJSD keyTerm : keyTerms) {
+				score += (keyTerm.getJSD());
+				if(keyTermCount > maxKeyTerm)
+					break;
+				keyTermCount ++;
+			}
+			keyTermCount=0;
+			for(TermExtractor.TermJSD keyTerm : keyTerms){
+				keyTerm.setJSD((float)(keyTerm.getJSD()) / score);
+				if(keyTermCount > maxKeyTerm)
+					break;
+				keyTermCount ++;
+			}
+				
+			BooleanQuery query = new BooleanQuery();
+			keyTermCount=0;
+			for(TermExtractor.TermJSD keyTerm : keyTerms) {
+				Query keyTermQuery = new QueryParser("contents", analyzer).parse(keyTerm.getTerm());
+				keyTermQuery.setBoost(keyTerm.getJSD());
+				query.add(keyTermQuery, Occur.SHOULD);
+				if(keyTermCount > maxKeyTerm)
+					break;
+				keyTermCount ++;
+			}
 			TopScoreDocCollector collector = TopScoreDocCollector.create(MAX_DOC_NO);
 			indexSearcher.search(query, collector);
 			ScoreDoc[] hits = collector.topDocs().scoreDocs;
@@ -155,26 +224,34 @@ public class LabelGenerator {
 	 * 		change it statistics tuple
 	 * @param keyTerms
 	 */
-	private void integrateKeyTerms(List<String> keyTerms) {
-		for(String keyTerm : keyTerms) {
+	private void integrateKeyTerms(List<TermExtractor.TermJSD> keyTerms, int keyTermCount) {
+		int count = 1;
+		for(TermExtractor.TermJSD keyTerm : keyTerms) {
 			// see how many documents actually contains the keyTerms
+			if(count > keyTermCount)
+				break;
+			count++;
 			ScoreDoc[] hits = null;
 			try {
-				Query query = new QueryParser("contents", analyzer).parse(keyTerm);
+				Query query = new QueryParser("contents", analyzer).parse(keyTerm.getTerm());
 				hits = indexSearcher.search(query, MAX_DOC_NO).scoreDocs;
 			} catch (IOException e) {
 				e.printStackTrace();
 			} catch (ParseException e) {
 				e.printStackTrace();
 			}
+			ArrayList<Integer> docList = new ArrayList<Integer>();
+			labelMap.put(keyTerm.getTerm(), docList);
 			for(int i = 0; i < hits.length; i ++) {
 				Tuple<Integer, Float> docTuple = docMap.get(hits[i].doc);
-				if(docTuple != null)
+				if(docTuple != null) {
 					// if the document is within the docMap, renew the
 					// label count.
+					docList.add(hits[i].doc);
 					docMap.put(hits[i].doc, 
 								new Tuple<Integer, Float>(docTuple.x + 1, 
 														  docTuple.y));
+				}
 			}
 		}
 	}
@@ -238,7 +315,7 @@ public class LabelGenerator {
 		return labelCandidate;
 	}  
 	
-	private class Label {
+	static class Label {
 		final public String text;
 		final public Float score; 
 		public Label(String text, Float score) {

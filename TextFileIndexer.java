@@ -49,9 +49,9 @@ import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.BytesRef;
 
 public class TextFileIndexer {
-	public static String wikiIndex = "/home/david/Projects/SearchEngine/wikiIndex";
-	private static String wikiTextInput = "/home/david/Projects/SearchEngine/wikiText";
-	private static String clusterIndex = "clusterIndex";
+	public static String wikiIndex = "/Users/Yanhong/Documents/UCSB/2015Winter/CS290N/Project/wikiIndex";
+	private static String wikiTextInput = "/Users/Yanhong/Documents/UCSB/2015Winter/CS290N/Project/wikiText";
+	private static String clusterIndex = "clusterIndexODP";
 	private static Analyzer analyzer;
 	private IndexWriter indexWriter;
 	public IndexReader indexReader;
@@ -60,7 +60,7 @@ public class TextFileIndexer {
 		//BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(System.in));
 		//TextFileIndexer textFileIndexer = new TextFileIndexer(wikiIndex);
 		TextFileIndexer textFileIndexer = new TextFileIndexer(clusterIndex);
-		textFileIndexer.indexCollection("input");
+		textFileIndexer.indexCollection("ODP/");
 		//textFileIndexer.indexWikiDataset(wikiTextInput);
 		textFileIndexer.closeIndexer();
 		//textFileIndexer.indexReader = DirectoryReader.open(FSDirectory.open(Paths.get(indexLocation)));
@@ -108,21 +108,21 @@ public class TextFileIndexer {
 		BufferedWriter bufferedWriter = new BufferedWriter(
 											new OutputStreamWriter(
 												new FileOutputStream(
-													new File(clusterDir.getName() + ".txt"))));
+													new File("ODPCluster/"+clusterDir.getName() + ".txt"))));
 		File[] files = clusterDir.listFiles();
 		int originalDocNum = indexWriter.numDocs();
 		for(File file : files) {
-/*			String fileName = file.getName().toLowerCase();
-			if(!fileName.endsWith(".txt")) {
-				System.out.println("Skipping " + fileName);
+//			String fileName = file.getName().toLowerCase();
+			if(file.getName().endsWith(".DS_Store")) {
+				//System.out.println("Skipping " + fileName);
 				continue;
-			}*/
+			}
 			FileReader fileReader = null;
 			try {
 				Document document = new Document();
 				fileReader = new FileReader(file);
 				// self defined unique ID
-				String id = String.valueOf(indexWriter.numDocs() + 1);
+				String id = String.valueOf(indexWriter.maxDoc() + 1);
 				bufferedWriter.write(id + '\n');
 				document.add(new StringField("id", id, Field.Store.YES));
 				document.add(new Field("contents", fileReader, Field.TermVector.YES));
