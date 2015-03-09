@@ -62,7 +62,7 @@ public class LabelGenerator {
 	}
 	
 	public static void main(String[] args) {
-		List<TermExtractor.TermJSD> keyTerms = new ArrayList<TermExtractor.TermJSD>();
+		List<TermExtractor.TermStat> keyTerms = new ArrayList<TermExtractor.TermStat>();
 		//keyTerms.add("Arabica ");
 		//keyTerms.add("movie ");
 		//keyTerms.add("poet ");
@@ -77,7 +77,7 @@ public class LabelGenerator {
 		
 		System.setOut(stdout);
 		System.out.println("The key terms that characterize the cluster is: ");
-		for(TermExtractor.TermJSD keyTerm :keyTerms){
+		for(TermExtractor.TermStat keyTerm :keyTerms){
 			System.out.print(keyTerm.getTerm()+" ");
 			 //+ keyTerms);
 		}
@@ -86,7 +86,7 @@ public class LabelGenerator {
 		System.out.println(labelGenerator.generateLabel(keyTerms,20));
 	}
 	
-	private static void printValues(List<TermExtractor.TermJSD> keyTerms) {
+	private static void printValues(List<TermExtractor.TermStat> keyTerms) {
 		File output = new File("../result.txt");
 		FileOutputStream fileOutputStream=null;
 		try {
@@ -99,9 +99,9 @@ public class LabelGenerator {
 		System.setOut(printStream);
 
 		
-		for(TermExtractor.TermJSD term : keyTerms){
+		for(TermExtractor.TermStat term : keyTerms){
 			//System.setOut(printStream);
-			System.out.println(term.getJSD()+ "  ");
+			System.out.println(term.getStat()+ "  ");
 		}
 		
 		// TODO Auto-generated method stub
@@ -121,7 +121,7 @@ public class LabelGenerator {
 		}
 	}
 	
-	public List<Label> generateLabel(List<TermExtractor.TermJSD> keyTerms, int maxKeyTerm) {
+	public List<Label> generateLabel(List<TermExtractor.TermStat> keyTerms, int maxKeyTerm) {
 		query(keyTerms, maxKeyTerm);
 		integrateKeyTerms(keyTerms,maxKeyTerm);
 		propagateScore();
@@ -142,19 +142,19 @@ public class LabelGenerator {
 	 * 		the labelMap.   
 	 * 
 	 */
-	private void query(List<TermExtractor.TermJSD> keyTerms, int maxKeyTerm) {
+	private void query(List<TermExtractor.TermStat> keyTerms, int maxKeyTerm) {
 		try {
 			float score = 0;
 			int keyTermCount = 0;
-			for(TermExtractor.TermJSD keyTerm : keyTerms) {
-				score += (keyTerm.getJSD());
+			for(TermExtractor.TermStat keyTerm : keyTerms) {
+				score += (keyTerm.getStat());
 				if(keyTermCount > maxKeyTerm)
 					break;
 				keyTermCount ++;
 			}
 			keyTermCount=0;
-			for(TermExtractor.TermJSD keyTerm : keyTerms){
-				keyTerm.setJSD((float)(keyTerm.getJSD()) / score);
+			for(TermExtractor.TermStat keyTerm : keyTerms){
+				keyTerm.setStat((float)(keyTerm.getStat()) / score);
 				if(keyTermCount > maxKeyTerm)
 					break;
 				keyTermCount ++;
@@ -162,9 +162,9 @@ public class LabelGenerator {
 				
 			BooleanQuery query = new BooleanQuery();
 			keyTermCount=0;
-			for(TermExtractor.TermJSD keyTerm : keyTerms) {
+			for(TermExtractor.TermStat keyTerm : keyTerms) {
 				Query keyTermQuery = new QueryParser("contents", analyzer).parse(keyTerm.getTerm());
-				keyTermQuery.setBoost(keyTerm.getJSD());
+				keyTermQuery.setBoost(keyTerm.getStat());
 				query.add(keyTermQuery, Occur.SHOULD);
 				if(keyTermCount > maxKeyTerm)
 					break;
@@ -224,9 +224,9 @@ public class LabelGenerator {
 	 * 		change it statistics tuple
 	 * @param keyTerms
 	 */
-	private void integrateKeyTerms(List<TermExtractor.TermJSD> keyTerms, int keyTermCount) {
+	private void integrateKeyTerms(List<TermExtractor.TermStat> keyTerms, int keyTermCount) {
 		int count = 1;
-		for(TermExtractor.TermJSD keyTerm : keyTerms) {
+		for(TermExtractor.TermStat keyTerm : keyTerms) {
 			// see how many documents actually contains the keyTerms
 			if(count > keyTermCount)
 				break;
